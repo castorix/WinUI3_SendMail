@@ -1,0 +1,11 @@
+{
+  "profiles": {
+    "WinUI3_SendMail (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "WinUI3_SendMail (Unpackaged)": {
+      "commandName": "Project",
+      "nativeDebugging": true
+    }
+  }
+}
