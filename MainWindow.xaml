@@ -103,7 +103,8 @@
         <StackPanel Orientation="Vertical" Grid.Row="1" Grid.Column="1">
             <TextBox x:Name="tbSMTPServer" Header="SMTP Server" Width="260" Height="66" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="0, 10, 0, 0">
                 <ToolTipService.ToolTip>
-                    <ToolTip Content="If SMTP server is smtp.gmail.com &#x0a;you must activate two-step verification &#x0a;and generate a Google App Password" Placement="Bottom" Background="LightYellow" Foreground="Black"/>
+                    <ToolTip Content="If SMTP server is smtp.gmail.com &#x0a;you must activate two-step verification &#x0a;and generate a Google App Password&#x0a;or use port 587 and create an App Password (https://myaccount.google.com/apppasswords)" 
+                             Placement="Bottom" Background="LightYellow" Foreground="Black"/>
                 </ToolTipService.ToolTip>
             </TextBox>
             <TextBox x:Name="tbSMTPServerPort" Header="SMTP Server Port" Width="260" Height="66" VerticalAlignment="Top"  HorizontalAlignment="Left" Margin="0, 10, 0, 0">

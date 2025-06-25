@@ -460,126 +460,138 @@ namespace WinUI3_SendMail
                         string sText = string.Empty;
                         rebText.Document.GetText(Microsoft.UI.Text.TextGetOptions.AdjustCrlf, out sText);
 
-                        IntPtr hMapiDLL = LoadDefaultMailProvider();
-                        // Unicode
-                        IntPtr pMAPISendMail = GetProcAddress(hMapiDLL, "MAPISendMailW");
-                        MAPISendMailDelegate pMAPISendMailWDelegate = (MAPISendMailDelegate)Marshal.GetDelegateForFunctionPointer(pMAPISendMail, typeof(MAPISendMailDelegate));
-
-                        MapiRecipDescW mrdFrom = new MapiRecipDescW();
-                        mrdFrom.lpszName = sFrom;
-                        mrdFrom.ulRecipClass = MAPI_ORIG;
-                        MapiRecipDescW mrdTo = new MapiRecipDescW();
-                        mrdTo.lpszName = sTo;
-                        mrdTo.ulRecipClass = MAPI_TO;
-                        MapiMessageW mm = new MapiMessageW();
-                        mm.lpszSubject = sSubject;
-                        mm.lpszNoteText = sText;
-
-                        IntPtr pFrom = Marshal.AllocHGlobal(Marshal.SizeOf(mrdFrom));
-                        Marshal.StructureToPtr(mrdFrom, pFrom, false);
-                        mm.lpOriginator = pFrom;
-                        IntPtr pTo = Marshal.AllocHGlobal(Marshal.SizeOf(mrdTo));
-                        Marshal.StructureToPtr(mrdTo, pTo, false);
-                        mm.lpRecips = pTo;
-                        mm.nRecipCount = 1;
-
-                        List<MapiFileDescW> list = new List<MapiFileDescW>();
-                        for (int i = 0; i < files.Count; i++)
+                        string sDLLPath = null;
+                        IntPtr hMapiDLL = LoadDefaultMailProvider(ref sDLLPath);
+                        if (hMapiDLL != IntPtr.Zero)
                         {
-                            MapiFileDescW mfd = new MapiFileDescW(0, 0, 0xFFFFFFFF, files[i], null, IntPtr.Zero);
-                            list.Add(mfd);
-                        }
-                        MapiFileDescW[] aMFD = list.ToArray();
+                            // Unicode
+                            IntPtr pMAPISendMail = GetProcAddress(hMapiDLL, "MAPISendMailW");
+                            MAPISendMailDelegate pMAPISendMailWDelegate = (MAPISendMailDelegate)Marshal.GetDelegateForFunctionPointer(pMAPISendMail, typeof(MAPISendMailDelegate));
 
-                        int nStructSize = Marshal.SizeOf(typeof(MapiFileDescW));
-                        IntPtr pArray = Marshal.AllocHGlobal(aMFD.Length * nStructSize);
-                        IntPtr ptr = pArray;
-                        for (int i = 0; i < aMFD.Length; i++)
-                        {
-                            Marshal.StructureToPtr(aMFD[i], ptr, false);
-                            ptr += nStructSize;
-                        }
-                        mm.lpFiles = pArray;
-                        mm.nFileCount = (uint)aMFD.Length;
+                            MapiRecipDescW mrdFrom = new MapiRecipDescW();
+                            mrdFrom.lpszName = sFrom;
+                            mrdFrom.ulRecipClass = MAPI_ORIG;
+                            MapiRecipDescW mrdTo = new MapiRecipDescW();
+                            mrdTo.lpszName = sTo;
+                            mrdTo.ulRecipClass = MAPI_TO;
+                            MapiMessageW mm = new MapiMessageW();
+                            mm.lpszSubject = sSubject;
+                            mm.lpszNoteText = sText;
 
-                        IntPtr pMessage = Marshal.AllocHGlobal(Marshal.SizeOf(mm));
-                        Marshal.StructureToPtr(mm, pMessage, false);
+                            IntPtr pFrom = Marshal.AllocHGlobal(Marshal.SizeOf(mrdFrom));
+                            Marshal.StructureToPtr(mrdFrom, pFrom, false);
+                            mm.lpOriginator = pFrom;
+                            IntPtr pTo = Marshal.AllocHGlobal(Marshal.SizeOf(mrdTo));
+                            Marshal.StructureToPtr(mrdTo, pTo, false);
+                            mm.lpRecips = pTo;
+                            mm.nRecipCount = 1;
 
-                        // Microsoft Outlook OK, but needs to be opened to synchronize
-                        // SeaMonkey nRet = 0x800706be with MAPISendMailW
-                        //MAPI_ERROR nRet = pMAPISendMailWDelegate(IntPtr.Zero, UIntPtr.Zero, pMessage, MAPI_DIALOG | MAPI_NEW_SESSION | MAPI_LOGON_UI, 0);
-                        int nFlags = MAPI_LOGON_UI;
-                        if ((bool)cbDialog.IsChecked)
-                            nFlags += MAPI_DIALOG;
-                        MAPI_ERROR nRet = pMAPISendMailWDelegate(IntPtr.Zero, UIntPtr.Zero, pMessage, nFlags, 0);
-                        Marshal.FreeHGlobal(pArray);
-                        Marshal.FreeHGlobal(pFrom);
-                        Marshal.FreeHGlobal(pTo);
-                        Marshal.FreeHGlobal(pMessage);
-                        if (nRet != MAPI_ERROR.SUCCESS_SUCCESS)
-                        {
-                            if (nRet != MAPI_ERROR.MAPI_USER_ABORT)
+                            List<MapiFileDescW> list = new List<MapiFileDescW>();
+                            for (int i = 0; i < files.Count; i++)
                             {
-                                // Ansi
-                                pMAPISendMail = GetProcAddress(hMapiDLL, "MAPISendMail");
-                                pMAPISendMailWDelegate = (MAPISendMailDelegate)Marshal.GetDelegateForFunctionPointer(pMAPISendMail, typeof(MAPISendMailDelegate));
+                                MapiFileDescW mfd = new MapiFileDescW(0, 0, 0xFFFFFFFF, files[i], null, IntPtr.Zero);
+                                list.Add(mfd);
+                            }
+                            MapiFileDescW[] aMFD = list.ToArray();
 
-                                MapiRecipDesc mrdFromAnsi = new MapiRecipDesc();
-                                mrdFromAnsi.lpszName = sFrom;
-                                mrdFromAnsi.ulRecipClass = MAPI_ORIG;
-                                MapiRecipDesc mrdToAnsi = new MapiRecipDesc();
-                                mrdToAnsi.lpszName = sTo;
-                                mrdToAnsi.ulRecipClass = MAPI_TO;
-                                MapiMessage mmAnsi = new MapiMessage();
-                                mmAnsi.lpszSubject = sSubject;
-                                mmAnsi.lpszNoteText = sText;
+                            int nStructSize = Marshal.SizeOf(typeof(MapiFileDescW));
+                            IntPtr pArray = Marshal.AllocHGlobal(aMFD.Length * nStructSize);
+                            IntPtr ptr = pArray;
+                            for (int i = 0; i < aMFD.Length; i++)
+                            {
+                                Marshal.StructureToPtr(aMFD[i], ptr, false);
+                                ptr += nStructSize;
+                            }
+                            mm.lpFiles = pArray;
+                            mm.nFileCount = (uint)aMFD.Length;
 
-                                IntPtr pFromAnsi = Marshal.AllocHGlobal(Marshal.SizeOf(mrdFromAnsi));
-                                Marshal.StructureToPtr(mrdFromAnsi, pFromAnsi, false);
-                                mmAnsi.lpOriginator = pFromAnsi;
-                                IntPtr pToAnsi = Marshal.AllocHGlobal(Marshal.SizeOf(mrdToAnsi));
-                                Marshal.StructureToPtr(mrdToAnsi, pToAnsi, false);
-                                mmAnsi.lpRecips = pToAnsi;
-                                mmAnsi.nRecipCount = 1;
+                            IntPtr pMessage = Marshal.AllocHGlobal(Marshal.SizeOf(mm));
+                            Marshal.StructureToPtr(mm, pMessage, false);
 
-                                List<MapiFileDesc> listAnsi = new List<MapiFileDesc>();
-                                for (int i = 0; i < files.Count; i++)
+                            // Microsoft Outlook OK, but needs to be opened to synchronize
+                            // SeaMonkey nRet = 0x800706be with MAPISendMailW
+                            //MAPI_ERROR nRet = pMAPISendMailWDelegate(IntPtr.Zero, UIntPtr.Zero, pMessage, MAPI_DIALOG | MAPI_NEW_SESSION | MAPI_LOGON_UI, 0);
+                            int nFlags = MAPI_LOGON_UI;
+                            if ((bool)cbDialog.IsChecked)
+                                nFlags += MAPI_DIALOG;
+                            MAPI_ERROR nRet = pMAPISendMailWDelegate(IntPtr.Zero, UIntPtr.Zero, pMessage, nFlags, 0);
+                            Marshal.FreeHGlobal(pArray);
+                            Marshal.FreeHGlobal(pFrom);
+                            Marshal.FreeHGlobal(pTo);
+                            Marshal.FreeHGlobal(pMessage);
+                            if (nRet != MAPI_ERROR.SUCCESS_SUCCESS)
+                            {
+                                if (nRet != MAPI_ERROR.MAPI_USER_ABORT)
                                 {
-                                    MapiFileDesc mfd = new MapiFileDesc(0, 0, 0xFFFFFFFF, files[i], null, IntPtr.Zero);
-                                    listAnsi.Add(mfd);
-                                }
-                                MapiFileDesc[] aMFDAnsi = listAnsi.ToArray();
+                                    // Ansi
+                                    pMAPISendMail = GetProcAddress(hMapiDLL, "MAPISendMail");
+                                    pMAPISendMailWDelegate = (MAPISendMailDelegate)Marshal.GetDelegateForFunctionPointer(pMAPISendMail, typeof(MAPISendMailDelegate));
 
-                                int nStructSizeAnsi = Marshal.SizeOf(typeof(MapiFileDesc));
-                                IntPtr pArrayAnsi = Marshal.AllocHGlobal(aMFDAnsi.Length * nStructSizeAnsi);
-                                IntPtr ptrAnsi = pArrayAnsi;
-                                for (int i = 0; i < aMFDAnsi.Length; i++)
-                                {
-                                    Marshal.StructureToPtr(aMFDAnsi[i], ptrAnsi, false);
-                                    ptrAnsi += nStructSizeAnsi;
-                                }
-                                mmAnsi.lpFiles = pArrayAnsi;
-                                mmAnsi.nFileCount = (uint)aMFDAnsi.Length;
+                                    MapiRecipDesc mrdFromAnsi = new MapiRecipDesc();
+                                    mrdFromAnsi.lpszName = sFrom;
+                                    mrdFromAnsi.ulRecipClass = MAPI_ORIG;
+                                    MapiRecipDesc mrdToAnsi = new MapiRecipDesc();
+                                    mrdToAnsi.lpszName = sTo;
+                                    mrdToAnsi.ulRecipClass = MAPI_TO;
+                                    MapiMessage mmAnsi = new MapiMessage();
+                                    mmAnsi.lpszSubject = sSubject;
+                                    mmAnsi.lpszNoteText = sText;
 
-                                IntPtr pMessageAnsi = Marshal.AllocHGlobal(Marshal.SizeOf(mmAnsi));
-                                Marshal.StructureToPtr(mmAnsi, pMessageAnsi, false);
-                                nRet = pMAPISendMailWDelegate(IntPtr.Zero, UIntPtr.Zero, pMessageAnsi, nFlags, 0);
-                                Marshal.FreeHGlobal(pArrayAnsi);
-                                Marshal.FreeHGlobal(pFromAnsi);
-                                Marshal.FreeHGlobal(pToAnsi);
-                                Marshal.FreeHGlobal(pMessageAnsi);
-                                if (nRet != MAPI_ERROR.SUCCESS_SUCCESS)
-                                {
-                                    if (nRet != MAPI_ERROR.MAPI_USER_ABORT)
+                                    IntPtr pFromAnsi = Marshal.AllocHGlobal(Marshal.SizeOf(mrdFromAnsi));
+                                    Marshal.StructureToPtr(mrdFromAnsi, pFromAnsi, false);
+                                    mmAnsi.lpOriginator = pFromAnsi;
+                                    IntPtr pToAnsi = Marshal.AllocHGlobal(Marshal.SizeOf(mrdToAnsi));
+                                    Marshal.StructureToPtr(mrdToAnsi, pToAnsi, false);
+                                    mmAnsi.lpRecips = pToAnsi;
+                                    mmAnsi.nRecipCount = 1;
+
+                                    List<MapiFileDesc> listAnsi = new List<MapiFileDesc>();
+                                    for (int i = 0; i < files.Count; i++)
                                     {
-                                        string sError = "Error : " + nRet.ToString();
-                                        Windows.UI.Popups.MessageDialog md = new Windows.UI.Popups.MessageDialog(sError, "Error");
-                                        WinRT.Interop.InitializeWithWindow.Initialize(md, hWnd);
-                                        _ = await md.ShowAsync();
+                                        MapiFileDesc mfd = new MapiFileDesc(0, 0, 0xFFFFFFFF, files[i], null, IntPtr.Zero);
+                                        listAnsi.Add(mfd);
+                                    }
+                                    MapiFileDesc[] aMFDAnsi = listAnsi.ToArray();
+
+                                    int nStructSizeAnsi = Marshal.SizeOf(typeof(MapiFileDesc));
+                                    IntPtr pArrayAnsi = Marshal.AllocHGlobal(aMFDAnsi.Length * nStructSizeAnsi);
+                                    IntPtr ptrAnsi = pArrayAnsi;
+                                    for (int i = 0; i < aMFDAnsi.Length; i++)
+                                    {
+                                        Marshal.StructureToPtr(aMFDAnsi[i], ptrAnsi, false);
+                                        ptrAnsi += nStructSizeAnsi;
+                                    }
+                                    mmAnsi.lpFiles = pArrayAnsi;
+                                    mmAnsi.nFileCount = (uint)aMFDAnsi.Length;
+
+                                    IntPtr pMessageAnsi = Marshal.AllocHGlobal(Marshal.SizeOf(mmAnsi));
+                                    Marshal.StructureToPtr(mmAnsi, pMessageAnsi, false);
+                                    nRet = pMAPISendMailWDelegate(IntPtr.Zero, UIntPtr.Zero, pMessageAnsi, nFlags, 0);
+                                    Marshal.FreeHGlobal(pArrayAnsi);
+                                    Marshal.FreeHGlobal(pFromAnsi);
+                                    Marshal.FreeHGlobal(pToAnsi);
+                                    Marshal.FreeHGlobal(pMessageAnsi);
+                                    if (nRet != MAPI_ERROR.SUCCESS_SUCCESS)
+                                    {
+                                        if (nRet != MAPI_ERROR.MAPI_USER_ABORT)
+                                        {
+                                            string sError = "Error : " + nRet.ToString();
+                                            Windows.UI.Popups.MessageDialog md = new Windows.UI.Popups.MessageDialog(sError, "Error");
+                                            WinRT.Interop.InitializeWithWindow.Initialize(md, hWnd);
+                                            _ = await md.ShowAsync();
+                                        }
+                                        else
+                                        {
+                                            string sError = "Mail cancelled by user";
+                                            Windows.UI.Popups.MessageDialog md = new Windows.UI.Popups.MessageDialog(sError, "Information");
+                                            WinRT.Interop.InitializeWithWindow.Initialize(md, hWnd);
+                                            _ = await md.ShowAsync();
+                                        }
                                     }
                                     else
                                     {
-                                        string sError = "Mail cancelled by user";
+                                        StartTimer(10 * 1000, 10 * 1000);
+                                        string sError = "Mail sent !";
                                         Windows.UI.Popups.MessageDialog md = new Windows.UI.Popups.MessageDialog(sError, "Information");
                                         WinRT.Interop.InitializeWithWindow.Initialize(md, hWnd);
                                         _ = await md.ShowAsync();
@@ -587,8 +599,7 @@ namespace WinUI3_SendMail
                                 }
                                 else
                                 {
-                                    StartTimer(10 * 1000, 10 * 1000);
-                                    string sError = "Mail sent !";
+                                    string sError = "Mail cancelled by user";
                                     Windows.UI.Popups.MessageDialog md = new Windows.UI.Popups.MessageDialog(sError, "Information");
                                     WinRT.Interop.InitializeWithWindow.Initialize(md, hWnd);
                                     _ = await md.ShowAsync();
@@ -596,7 +607,8 @@ namespace WinUI3_SendMail
                             }
                             else
                             {
-                                string sError = "Mail cancelled by user";
+                                StartTimer(10 * 1000, 10 * 1000);
+                                string sError = "Mail sent !";
                                 Windows.UI.Popups.MessageDialog md = new Windows.UI.Popups.MessageDialog(sError, "Information");
                                 WinRT.Interop.InitializeWithWindow.Initialize(md, hWnd);
                                 _ = await md.ShowAsync();
@@ -604,9 +616,8 @@ namespace WinUI3_SendMail
                         }
                         else
                         {
-                            StartTimer(10 * 1000, 10 * 1000);
-                            string sError = "Mail sent !";
-                            Windows.UI.Popups.MessageDialog md = new Windows.UI.Popups.MessageDialog(sError, "Information");
+                            int nError = Marshal.GetLastWin32Error();
+                            Windows.UI.Popups.MessageDialog md = new Windows.UI.Popups.MessageDialog("Error loading " + sDLLPath + " : " + nError.ToString(), "Information");
                             WinRT.Interop.InitializeWithWindow.Initialize(md, hWnd);
                             _ = await md.ShowAsync();
                         }
@@ -1215,7 +1226,7 @@ namespace WinUI3_SendMail
         }
 
         // Simplified from "MapiUnicodeHelp.h"
-        private IntPtr LoadDefaultMailProvider()
+        private IntPtr LoadDefaultMailProvider(ref string sDLLPath)
         {
             IntPtr hDLL = IntPtr.Zero;
             string szDefaultMail = null;
@@ -1279,6 +1290,7 @@ namespace WinUI3_SendMail
             if (szDLLPath != null)
             {
                 hDLL = LoadLibrary(szDLLPath);
+                sDLLPath = szDLLPath;
             }
             else
                 hDLL = LoadLibrary("MAPI32.DLL");
